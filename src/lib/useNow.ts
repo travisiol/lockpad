@@ -17,5 +17,6 @@ export function useNow(readAt?: number): number {
     const id = setInterval(() => setNow(anchor.current.base + Math.floor((Date.now() - anchor.current.started) / 1000)), 1000);
     return () => clearInterval(id);
   }, [readAt]);
-  return now;
+  // Until the first tick after a new read lands, never sit behind the chain.
+  return readAt !== undefined && now < readAt ? readAt : now;
 }

@@ -18,7 +18,22 @@ const SUMMARY_TTL = 10_000;
 const TRADES_TTL = 15_000;
 
 const wei = (v: bigint) => Number(formatEther(v));
-const now = () => Math.floor(Date.now() / 1000);
+
+/**
+ * The chain's clock, not the server's: every deadline and vest end is a
+ * block timestamp, so countdowns are measured from the latest block. Falls
+ * back to the wall clock if the read fails.
+ */
+function chainNow(): Promise<number> {
+  return cached("chainNow", 5_000, async () => {
+    try {
+      const block = await chainClient().getBlock({ blockTag: "latest" });
+      return Number(block.timestamp);
+    } catch {
+      return Math.floor(Date.now() / 1000);
+    }
+  });
+}
 
 /** ETH/USD from Coinbase's public spot endpoint; null when unreachable. */
 export function ethUsd(): Promise<number | null> {
@@ -236,15 +251,16 @@ function launchOf(l: RouterInfo, market: LaunchMarket, locks: LockStatusJson): L
 
 /** Newest first. Empty until the router exists and someone launches. */
 export function listLaunches(limit: number): Promise<{ launches: Launch[]; readAt: number }> {
-  if (!ROUTER_ADDRESS) return Promise.resolve({ launches: [], readAt: now() });
+  if (!ROUTER_ADDRESS) return Promise.resolve({ launches: [], readAt: Math.floor(Date.now() / 1000) });
   const router = ROUTER_ADDRESS;
   return cached(`launches:${limit}`, LIST_TTL, async () => {
-    const [page, usd] = await Promise.all([
+    const [page, usd, readAt] = await Promise.all([
       chainClient().readContract({ address: router, abi: routerAbi, functionName: "launches", args: [0n, BigInt(limit)] }) as Promise<readonly RouterInfo[]>,
       ethUsd(),
+      chainNow(),
     ]);
     const [curves, locks] = await Promise.all([readCurves(page.map((l) => l.curve)), readLocks(router, page.map((l) => l.token))]);
-    return { launches: page.map((l, i) => launchOf(l, marketOf(curves[i], usd), locks[i])), readAt: now() };
+    return { launches: page.map((l, i) => launchOf(l, marketOf(curves[i], usd), locks[i])), readAt };
   });
 }
 
@@ -274,12 +290,13 @@ export function tokenSummary(token: Address): Promise<{ launch: Launch; market: 
     const info = await tokenInfo(token);
     if (!info || !ROUTER_ADDRESS) return null;
     const client = chainClient();
-    const [[curve], usd, [locks], onCurve, protocolShareBps] = await Promise.all([
+    const [[curve], usd, [locks], onCurve, protocolShareBps, readAt] = await Promise.all([
       readCurves([info.curve]),
       ethUsd(),
       readLocks(ROUTER_ADDRESS, [token]),
       client.readContract({ address: info.curve, abi: curveAbi, functionName: "quoteFeeBalance" }).catch(() => 0n) as Promise<bigint>,
       client.readContract({ address: info.curve, abi: curveAbi, functionName: "protocolFeeShareBps" }).catch(() => 0n) as Promise<bigint>,
+      chainNow(),
     ]);
     // Fees sit on the curve until Pons sweeps them; the creator's share is
     // whatever is left after the protocol's cut.
@@ -293,7 +310,7 @@ export function tokenSummary(token: Address): Promise<{ launch: Launch; market: 
       venue: m.graduated ? "pool" : "curve",
       accruingWei: accruing.toString(),
     };
-    return { launch: launchOf(info, m, locks), market, readAt: now() };
+    return { launch: launchOf(info, m, locks), market, readAt };
   });
 }
 
@@ -364,6 +381,6 @@ export async function tokenChart(token: Address): Promise<{ points: ChartPoint[]
     const quote = Number(t.quoteAmount) / 1e18;
     return { t: t.timestamp, price: tokens > 0 ? quote / tokens : 0 };
   });
-  points.push({ t: now(), price: summary.market.priceEth });
+  points.push({ t: summary.readAt, price: summary.market.priceEth });
   return { points, ethUsd: summary.market.ethUsd, launchSupply: summary.market.launchSupply };
 }

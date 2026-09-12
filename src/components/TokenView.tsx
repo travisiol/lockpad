@@ -124,6 +124,9 @@ export function TokenView({ token }: { token: `0x${string}` }) {
   const canBury = phase === "buriable" || phase === "buried";
   const buryReady = canBury && BigInt(fees.buryable) > 0n && now >= fees.nextBuryAt;
   const releaseReady = (phase === "unlocking" || phase === "open") && (BigInt(fees.releasable) > 0n || BigInt(fees.pending) > 0n);
+  // After graduation the curve's reserves move to the pool; the site reads
+  // the curve only, so it has no price to show.
+  const inPool = market.graduated && market.priceEth === 0;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -155,13 +158,23 @@ export function TokenView({ token }: { token: `0x${string}` }) {
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Price" value={formatPrice(market.priceUsd, market.priceEth)} />
-            <Stat label="Market cap" value={formatCap(market.marketCapUsd, market.marketCapEth)} />
-            <Stat label="Raised" value={`${market.raisedEth.toFixed(3)} / ${market.graduationThresholdEth} ETH`} />
+            <Stat label="Price" value={inPool ? "In pool" : formatPrice(market.priceUsd, market.priceEth)} />
+            <Stat label="Market cap" value={inPool ? "In pool" : formatCap(market.marketCapUsd, market.marketCapEth)} />
+            <Stat label="Raised" value={market.graduated ? "Graduated" : `${market.raisedEth.toFixed(2)}/${market.graduationThresholdEth} ETH`} />
             <Stat label="Venue" value={market.graduated ? "Pool · graduated" : `Curve · ${Math.floor(market.graduationProgressPct)}%`} />
           </div>
 
-          <div className="mt-6">{chart ? <PriceChart points={chart.points} launchSupply={chart.launchSupply} ethUsd={chart.ethUsd} /> : <div className="skeleton h-[220px] w-full" />}</div>
+          <div className="mt-6">
+            {inPool ? (
+              <div className="flex h-[220px] items-center justify-center rounded-[14px] border border-dashed border-edge px-6 text-center text-sm text-ink-3">
+                Graduated — the market moved to the pool. This page reads the curve only; trade and price on Pons.
+              </div>
+            ) : chart ? (
+              <PriceChart points={chart.points} launchSupply={chart.launchSupply} ethUsd={chart.ethUsd} />
+            ) : (
+              <div className="skeleton h-[220px] w-full" />
+            )}
+          </div>
         </div>
 
         <div className="glass p-6 sm:p-7">

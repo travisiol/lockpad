@@ -155,7 +155,7 @@ export function LaunchForm() {
     { key: "router", label: "Router deployed", ok: routerLive, note: routerLive ? "reads and writes go to the chain" : "awaiting deployment" },
     { key: "gate", label: "Pons accepts launches", ok: gateOpen === true, note: gateOpen === undefined ? "reading the factory" : gateOpen ? "launchEnabled and canLaunch" : "closed on Pons' side" },
     { key: "wallet", label: "Wallet connected", ok: mounted && isConnected, note: mounted && isConnected ? "injected wallet" : "connect to sign" },
-    { key: "chain", label: "On Robinhood Chain", ok: onChain, note: onChain ? "chain id 4663" : "switch network" },
+    { key: "chain", label: "On Robinhood Chain", ok: onChain, note: onChain ? `chain id ${robinhoodChain.id}` : "switch network" },
     { key: "fields", label: "Fields valid", ok: valid, note: valid ? "name, ticker, schedule" : Object.values(errors)[0] ?? "" },
     {
       key: "funds",

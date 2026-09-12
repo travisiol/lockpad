@@ -50,7 +50,7 @@ export function LaunchCard({ launch, now }: { launch: Launch; now: number }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <p className="label">Market cap</p>
-          <p className="mono mt-1 text-lg text-ink">{formatCap(market.marketCapUsd, market.marketCapEth)}</p>
+          <p className="mono mt-1 text-lg text-ink">{market.graduated && market.priceEth === 0 ? "In pool" : formatCap(market.marketCapUsd, market.marketCapEth)}</p>
         </div>
         <div>
           <p className="label">Graduation</p>
