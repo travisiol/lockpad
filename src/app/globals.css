@@ -1,0 +1,496 @@
+@import "tailwindcss";
+
+/*
+ * LOCKPAD — "the vault room".
+ *
+ * A product you use, not a page you read: near-black ground, a cold
+ * ultramarine/violet nebula behind everything, frosted glass panels, and
+ * one lit chrome object in the hero. Colour is a state, not decoration:
+ *
+ *   amber   LOCKED — held by a contract, behind a schedule. The only warm
+ *           colour on the site, and the only saturated one that touches UI.
+ *   ink     released / paid out / plain fact.
+ *   ash     buried — bought back and burned; the lock is closed for good.
+ *   up/down market numbers only. Never a button, never a label.
+ *
+ * The nebula is cold on purpose: against it the amber padlock and every
+ * "locked" readout are the warmest thing on screen.
+ */
+:root {
+  --void: #07080c;
+  --void-2: #0c0e14;
+  --void-3: #12151d;
+
+  --ink: #f3f4f8;
+  --ink-2: rgba(243, 244, 248, 0.72);
+  --ink-3: rgba(243, 244, 248, 0.5);
+  --ink-4: rgba(243, 244, 248, 0.32);
+
+  --glass: rgba(255, 255, 255, 0.045);
+  --glass-2: rgba(255, 255, 255, 0.075);
+  --edge: rgba(255, 255, 255, 0.1);
+  --edge-2: rgba(255, 255, 255, 0.18);
+
+  --amber: #ffb02e;
+  --amber-hot: #ffcf70;
+  --amber-deep: #b86a00;
+  --amber-soft: rgba(255, 176, 46, 0.12);
+  --amber-glow: rgba(255, 176, 46, 0.32);
+
+  --ash: #7c818c;
+  --ash-soft: rgba(124, 129, 140, 0.16);
+
+  --up: #35d07f;
+  --down: #ff4d5e;
+
+  --blue: #3650ff;
+  --violet: #7c3aed;
+}
+
+@theme inline {
+  --color-void: var(--void);
+  --color-void-2: var(--void-2);
+  --color-void-3: var(--void-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-glass: var(--glass);
+  --color-glass-2: var(--glass-2);
+  --color-edge: var(--edge);
+  --color-edge-2: var(--edge-2);
+  --color-amber: var(--amber);
+  --color-amber-hot: var(--amber-hot);
+  --color-amber-deep: var(--amber-deep);
+  --color-amber-soft: var(--amber-soft);
+  --color-ash: var(--ash);
+  --color-ash-soft: var(--ash-soft);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-blue: var(--blue);
+  --color-violet: var(--violet);
+
+  --font-display: "Inter Tight", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --radius-card: 24px;
+  --radius-panel: 18px;
+}
+
+/* Everything that touches an element or that a utility must be able to
+   override lives inside a layer: unlayered rules beat every utility. */
+@layer base {
+  * {
+    border-color: var(--edge);
+  }
+
+  html {
+    background: var(--void);
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  /* The ground colour lives on <html> (it propagates to the canvas). The
+     body stays transparent: an opaque body background paints OVER a
+     negative-z-index fixed child, and the nebula would never show. */
+  body {
+    background-color: transparent;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::selection {
+    background: var(--amber);
+    color: var(--void);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--ink-4);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* The nebula: two cold radial pools and a faint warm one where the hero
+     object sits, all fixed so they do not scroll with the content. */
+  .nebula {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(64vw 54vh at 10% -8%, rgba(54, 80, 255, 0.46), transparent 64%),
+      radial-gradient(56vw 50vh at 102% 4%, rgba(124, 58, 237, 0.38), transparent 62%),
+      radial-gradient(46vw 42vh at 74% 44%, rgba(255, 176, 46, 0.13), transparent 62%),
+      radial-gradient(76vw 54vh at 28% 112%, rgba(54, 80, 255, 0.22), transparent 62%),
+      var(--void);
+  }
+
+  /* Fine grain so the gradients do not band. */
+  .nebula::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    mix-blend-mode: soft-light;
+  }
+
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-card);
+    backdrop-filter: blur(18px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 24px 60px -30px rgba(0, 0, 0, 0.7);
+  }
+
+  .glass-2 {
+    background: var(--glass-2);
+    border: 1px solid var(--edge-2);
+    border-radius: var(--radius-panel);
+    backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .panel {
+    background: var(--glass);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-panel);
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 0.98;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    padding: 6px 12px;
+    border: 1px solid var(--edge);
+    border-radius: 999px;
+    background: var(--glass);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1;
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease,
+      opacity 150ms ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .btn:not(:disabled):active {
+    transform: translateY(1px);
+  }
+
+  .btn-primary {
+    color: #1a1000;
+    background: linear-gradient(135deg, var(--amber-hot), #ff9a1f 70%, #ff7d00);
+    border: 1px solid rgba(255, 207, 112, 0.6);
+    box-shadow:
+      0 10px 30px -10px var(--amber-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
+
+  .btn-primary:not(:disabled):hover {
+    box-shadow:
+      0 14px 40px -10px rgba(255, 176, 46, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .btn-glass {
+    color: var(--ink);
+    background: var(--glass-2);
+    border: 1px solid var(--edge-2);
+    backdrop-filter: blur(14px);
+  }
+
+  .btn-glass:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.28);
+  }
+
+  .btn-sm {
+    padding: 9px 16px;
+    font-size: 13px;
+  }
+
+  .field {
+    width: 100%;
+    padding: 13px 16px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid var(--edge);
+    color: var(--ink);
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .field:hover {
+    border-color: var(--edge-2);
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--amber);
+    background: rgba(0, 0, 0, 0.42);
+    box-shadow: 0 0 0 3px var(--amber-soft);
+  }
+
+  .field[aria-invalid="true"] {
+    border-color: var(--down);
+  }
+
+  /* Segmented choice (vesting length, deadline). */
+  .seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid var(--edge);
+  }
+
+  .seg-opt {
+    padding: 10px 8px;
+    border-radius: 10px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-3);
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .seg-opt:hover {
+    color: var(--ink);
+  }
+
+  .seg-opt[aria-checked="true"] {
+    background: var(--amber);
+    color: #1a1000;
+    font-weight: 500;
+  }
+
+  /* Status pills: one class per state, the colour rule made concrete. */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--edge);
+    color: var(--ink-2);
+    background: var(--glass);
+    white-space: nowrap;
+  }
+
+  .pill::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .pill-locked {
+    color: var(--amber);
+    border-color: rgba(255, 176, 46, 0.35);
+    background: var(--amber-soft);
+  }
+
+  .pill-locked::before {
+    box-shadow: 0 0 10px var(--amber);
+  }
+
+  .pill-released {
+    color: var(--ink);
+    border-color: var(--edge-2);
+  }
+
+  .pill-buried {
+    color: var(--ash);
+    border-color: rgba(124, 129, 140, 0.4);
+    background: var(--ash-soft);
+  }
+
+  .pill-due {
+    color: var(--ink);
+    border-color: rgba(255, 176, 46, 0.5);
+    background: transparent;
+  }
+
+  .hairline {
+    height: 1px;
+    background: var(--edge);
+  }
+
+  /* Amber value: a locked figure. */
+  .locked-value {
+    color: var(--amber);
+    text-shadow: 0 0 24px rgba(255, 176, 46, 0.25);
+  }
+
+  /* Scroll reveal, CSS only, with an @supports guard so browsers without
+     scroll-driven animations show everything. */
+  .reveal {
+    opacity: 1;
+  }
+
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 28%;
+    }
+  }
+
+  @media print {
+    .reveal {
+      animation: none;
+      opacity: 1;
+    }
+  }
+
+  .marquee {
+    display: flex;
+    gap: 48px;
+    width: max-content;
+    animation: marquee 42s linear infinite;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--glass) 0%, var(--glass-2) 50%, var(--glass) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+    border-radius: 8px;
+  }
+
+  .prose-lock p + p {
+    margin-top: 0.9em;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
