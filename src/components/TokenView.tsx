@@ -8,6 +8,7 @@ import { Dial } from "@/components/Dial";
 import { PILL_CLASS } from "@/components/LaunchCard";
 import { PriceChart } from "@/components/PriceChart";
 import { TokenLogo } from "@/components/TokenLogo";
+import { TradePanel } from "@/components/TradePanel";
 import { explorer, ponsTradeUrl, robinhoodChain } from "@/lib/chain";
 import { feeLockAbi, vestingAbi } from "@/lib/contracts";
 import { formatCap, formatDateTime, formatPrice, formatTokenAmount, shortAddress } from "@/lib/format";
@@ -217,8 +218,10 @@ export function TokenView({ token }: { token: `0x${string}` }) {
         </div>
       </div>
 
-      {/* ── Locks ─────────────────────────────────────────────────────── */}
+      {/* ── Trade + locks ─────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4">
+        <TradePanel token={launch.token as `0x${string}`} curve={launch.curve as `0x${string}`} symbol={launch.symbol} graduated={market.graduated} />
+
         <div className="glass p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="display text-[22px] text-ink">Fee lock</h2>

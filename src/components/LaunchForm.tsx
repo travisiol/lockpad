@@ -21,6 +21,7 @@ type Fields = {
   name: string;
   ticker: string;
   description: string;
+  imageUrl: string;
   x: string;
   telegram: string;
   website: string;
@@ -34,6 +35,7 @@ const EMPTY: Fields = {
   name: "",
   ticker: "",
   description: "",
+  imageUrl: "",
   x: "",
   telegram: "",
   website: "",
@@ -51,6 +53,8 @@ function validate(f: Fields) {
   else if (!/^[A-Z0-9]{1,10}$/.test(f.ticker)) errors.ticker = "A–Z and 0–9 only";
   if (f.description.length > 256) errors.description = "256 characters max";
   else if (LINK_RE.test(f.description)) errors.description = "No links in the description";
+  if (f.imageUrl.trim() && !/^https:\/\/\S+$/.test(f.imageUrl.trim())) errors.imageUrl = "An https:// URL";
+  else if (f.imageUrl.length > 256) errors.imageUrl = "256 characters max";
   if (f.devBuy.trim() && !/^\d*\.?\d*$/.test(f.devBuy)) errors.devBuy = "Decimal ETH amount";
   const dev = Number.parseFloat(f.devBuy || "0");
   const vest = Number.parseInt(f.vestDays || "0", 10);
@@ -92,15 +96,30 @@ export function LaunchForm() {
   // Errors only show on fields the creator has touched (or all of them once
   // they tried to submit); the interlocks panel reads the full validation.
   const [touched, setTouched] = useState<Partial<Record<keyof Fields, boolean>>>({});
+  // Whether this pad can pin images (a key on the server). Without it the
+  // form still takes an image URL; nothing about launching needs a file.
+  const [uploads, setUploads] = useState<boolean | null>(null);
   const mounted = useMounted();
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/upload")
+      .then((r) => r.json() as Promise<{ enabled: boolean }>)
+      .then((j) => alive && setUploads(Boolean(j.enabled)))
+      .catch(() => alive && setUploads(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // One object URL per picked file; revoked when the file changes or the
   // form unmounts.
-  const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  const filePreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   useEffect(() => {
-    if (!preview) return;
-    return () => URL.revokeObjectURL(preview);
-  }, [preview]);
+    if (!filePreview) return;
+    return () => URL.revokeObjectURL(filePreview);
+  }, [filePreview]);
+  const preview = filePreview ?? (/^https:\/\/\S+$/.test(f.imageUrl.trim()) ? f.imageUrl.trim() : null);
 
   const { address, isConnected, chainId } = useAccount();
   const { data: balance } = useBalance({ address, chainId: robinhoodChain.id });
@@ -190,17 +209,17 @@ export function LaunchForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setTouched({ name: true, ticker: true, description: true, devBuy: true, vestDays: true, windowDays: true, creatorTaxBps: true });
+    setTouched({ name: true, ticker: true, description: true, imageUrl: true, devBuy: true, vestDays: true, windowDays: true, creatorTaxBps: true });
     if (!canSubmit || !ROUTER_ADDRESS) return;
     setStatus(null);
     try {
-      let logo = "";
-      if (file) {
+      let logo = f.imageUrl.trim();
+      if (file && uploads) {
         const body = new FormData();
         body.append("file", file);
         const up = await fetch("/api/upload", { method: "POST", body });
-        const json = (await up.json().catch(() => ({}))) as { uri?: string };
-        if (!up.ok || !json.uri) throw new Error("Image upload failed. Remove the image or try again.");
+        const json = (await up.json().catch(() => ({}))) as { uri?: string; error?: string };
+        if (!up.ok || !json.uri) throw new Error(json.error ?? "Image upload failed. Remove the image or try again.");
         logo = json.uri;
       }
       const hash = await writeContractAsync({
@@ -264,11 +283,21 @@ export function LaunchForm() {
         <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_1fr]">
           <div>
             <span className="label mb-2 block">Token image</span>
-            <label className="flex cursor-pointer items-center gap-4 rounded-[14px] border border-dashed border-edge-2 bg-black/20 px-4 py-4 transition-colors hover:border-amber hover:bg-black/30">
-              {preview ? <img src={preview} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <TokenLogo logo={null} symbol={f.ticker || "?"} size={56} />}
-              <span className="text-sm text-ink-3">{file ? file.name : "Click to upload · via Pons IPFS"}</span>
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            </label>
+            {uploads ? (
+              <label className="flex cursor-pointer items-center gap-4 rounded-[14px] border border-dashed border-edge-2 bg-black/20 px-4 py-4 transition-colors hover:border-amber hover:bg-black/30">
+                {preview ? <img src={preview} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <TokenLogo logo={null} symbol={f.ticker || "?"} size={56} />}
+                <span className="text-sm text-ink-3">{file ? file.name : "Click to upload · pinned to IPFS"}</span>
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              </label>
+            ) : (
+              <div className="flex items-center gap-4 rounded-[14px] border border-edge bg-black/20 px-4 py-4">
+                {preview ? <img src={preview} alt="" className="h-14 w-14 rounded-xl object-cover" onError={() => setTouched((t) => ({ ...t, imageUrl: true }))} /> : <TokenLogo logo={null} symbol={f.ticker || "?"} size={56} />}
+                <span className="text-sm text-ink-3">{uploads === null ? "Checking uploads…" : "Paste an https:// image URL below. Optional."}</span>
+              </div>
+            )}
+            <Field label={uploads ? "Or an image URL" : "Image URL"} error={shown("imageUrl")} className="mt-3" hint="https, optional">
+              <input className="field" placeholder="https://…/token.png" value={f.imageUrl} onChange={set("imageUrl")} aria-invalid={Boolean(shown("imageUrl"))} />
+            </Field>
           </div>
           <div className="grid gap-4">
             <Field label="X profile">

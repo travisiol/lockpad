@@ -45,6 +45,32 @@ src/
   lib/lockmath.ts               schedule arithmetic + the rule preview; checked by scripts/check-lockmath.mts
 ```
 
+## Go live
+
+Three steps, in order. Nothing else stands between a visitor and a real launch.
+
+1. **Deploy the contracts** (one funded wallet on Robinhood Chain — a few thousandths of an ETH covers both contracts):
+
+   ```bash
+   cd contracts
+   cp .env.example .env          # put DEPLOYER_PRIVATE_KEY, TREASURY_ADDRESS (where the 10% goes) and optionally OWNER_ADDRESS
+   npm install
+   npm run deploy:robinhood      # LockFactory + LockpadRouter → deployments/robinhood.json
+   npm run verify:robinhood      # source on the explorer (optional, may need a retry)
+   ```
+
+2. **Build the site** — it picks the router address up from `contracts/deployments/robinhood.json` on its own (`next.config.ts`), or from `NEXT_PUBLIC_LOCKPAD_ROUTER` if you set it:
+
+   ```bash
+   npm install && npm run build && npm start
+   ```
+
+   On Vercel: import the repo, set `NEXT_PUBLIC_LOCKPAD_ROUTER` (the deploy record is git-ignored on purpose until you commit it) and, if you want uploads, `PINATA_JWT`.
+
+3. **Images** are optional. Creators can always paste an https URL. To offer uploads, set `PINATA_JWT` (Pinata's free tier) — or `PONS_IPFS_UPLOAD_URL` if Pons allows your origin on their upload endpoint (it is origin-gated; the site does not spoof it).
+
+Then anyone with an injected wallet (MetaMask, Rabby, …) can launch from `/launch` — the wallet is offered Robinhood Chain if it does not have it — and buy or sell on the token's page: the trade panel calls the token's Pons curve directly, with quotes computed from its reserves (constant product, checked to the wei on a fork).
+
 ## Run
 
 ```bash
@@ -93,11 +119,12 @@ npm run deploy:robinhood     # writes deployments/robinhood.json, prints NEXT_PU
 - `npm test`: 35 passing (router, fee lock, vesting, lock factory; burials, cooldowns, exclusivity of graduation and burial, two-step hand-overs).
 - `fork:check` on a fork of Robinhood Chain at block ~61.21 M: launch with dev buy (6.34 M gas), tokens in vesting, creator not exempt, burial on the real curve burned 1.65 M tokens, a real graduation swept 0.0297 ETH of creator fees into the Pons escrow and a release paid 0.02236 ETH to the creator and 0.00248 ETH to the treasury.
 - Site: `next build`, `eslint`, `check:lockmath` clean; no horizontal overflow at 375 px on `/`, `/launch`, `/tokens`, `/docs`; `backdrop-filter` measured on the glass panels; hydration clean.
+- Against a seeded fork (`serve:fork`): the three lock states render from real numbers; the launch form, driven through a stubbed wallet, produced exactly the typed `launch(...)` calldata; the trade panel quotes match the curve to the wei (buy 0.05 ETH → 28 620 988.725065047701647875 tokens; sell half → 0.024858233611966564 ETH) and `sell` needs an `approve` first, which the panel does.
 
 ## Open
 
 - **Not deployed.** `deploy:robinhood` needs a funded key; the site is wired for the router address and shows nothing until it has one.
-- **Image upload** needs `PONS_IPFS_UPLOAD_URL`; without it the form answers 501 and asks to remove the image.
+- **Image upload** needs `PINATA_JWT` (or an allowed custom endpoint); without either the form takes an image URL only.
 - **Sweeps are Pons'.** Creator fees sit on the curve until Pons sweeps them (graduation triggers one). The lock can only act on what has reached the escrow; the token page shows all three figures.
 - **Edge:** a buried lock whose curve later graduates can no longer buy on the curve, so any fee arriving after that stays in the lock. It never reaches the creator either.
 - **Graduation time is observed, not read.** The curve exposes a flag, not a timestamp, so the vest starts when someone first checkpoints. The site makes that one click; a creator who never does starts late.

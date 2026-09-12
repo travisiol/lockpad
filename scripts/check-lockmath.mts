@@ -104,3 +104,38 @@ const expectDay = d.getUTCDate();
 assert.ok(noDev[3].text.includes(String(expectDay)), `deadline day ${expectDay} in: ${noDev[3].text}`);
 
 console.log("lockmath: all checks pass");
+
+// ── curve quotes, against the fork numbers ──────────────────────────────
+{
+  const { quoteBuy, quoteSell, withSlippage, parseDecimal, formatUnitsTrim, priceImpactBps, sellImpactBps, spotWeiPerToken } = await import("../src/lib/curvemath.ts");
+  const E = 10n ** 18n;
+  const q0 = 1_680_000_000_000_000_000n; // 1.68 ETH phantom quote
+  const t0 = 1_000_000_000n * E; // 1e9 tokens
+  const spend = 50_000_000_000_000_000n; // 0.05 ETH
+  const bought = quoteBuy(q0, t0, spend, 100n);
+  assert.equal(bought, 28_620_988_725_065_047_701_647_875n, "buy matches the real curve to the wei");
+  const q1 = q0 + spend - (spend * 100n) / 10_000n;
+  const t1 = t0 - bought;
+  const half = bought / 2n;
+  const sold = quoteSell(q1, t1, half, 100n);
+  assert.equal(sold, 24_858_233_611_966_564n, "sell matches the real curve to the wei");
+  assert.equal(quoteBuy(q0, t0, 0n, 100n), 0n);
+  assert.equal(quoteBuy(q0, t0, spend, 9_900n, 100n), 0n, "fees at 100% buy nothing");
+  assert.equal(withSlippage(1_000_000n, 100n), 990_000n);
+  assert.equal(parseDecimal("0.05"), spend);
+  assert.equal(parseDecimal("1."), E);
+  assert.equal(parseDecimal(".5"), E / 2n);
+  assert.equal(parseDecimal(""), null);
+  assert.equal(parseDecimal("abc"), null);
+  assert.equal(parseDecimal("1,5"), null);
+  assert.equal(formatUnitsTrim(spend), "0.05");
+  assert.equal(formatUnitsTrim(bought, 18, 2), "28620988.72");
+  assert.equal(formatUnitsTrim(0n), "0");
+  const impact = priceImpactBps(q0, t0, (spend * 9_900n) / 10_000n, bought);
+  assert.ok(impact > 500n && impact < 700n, `0.05 ETH on a fresh curve moves the price ~6%: ${impact} bps`);
+  assert.equal(spotWeiPerToken(q0, t0), 1_680_000_000n);
+  const drop = sellImpactBps(q1, t1, half);
+  assert.ok(drop > 200n && drop < 400n, `selling half the buy back drops the price ~3%: ${drop} bps`);
+  assert.equal(sellImpactBps(q1, t1, 0n), 0n);
+  console.log("curvemath: all checks pass");
+}

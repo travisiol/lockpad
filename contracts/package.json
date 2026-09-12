@@ -10,7 +10,10 @@
     "export-abi": "hardhat run scripts/export-abi.ts",
     "fork:check": "hardhat run scripts/fork-check.ts --network fork",
     "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
-    "deploy:robinhood": "hardhat run scripts/deploy.ts --network robinhood"
+    "deploy:robinhood": "hardhat run scripts/deploy.ts --network robinhood",
+    "verify:robinhood": "hardhat run scripts/verify.ts --network robinhood",
+    "probe:curve": "hardhat run scripts/probe-curve.ts",
+    "serve:fork": "hardhat run scripts/serve-fork.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",

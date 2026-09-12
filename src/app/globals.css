@@ -347,7 +347,8 @@
     color: var(--ink);
   }
 
-  .seg-opt[aria-checked="true"] {
+  .seg-opt[aria-checked="true"],
+  .seg-opt[aria-selected="true"] {
     background: var(--amber);
     color: #1a1000;
     font-weight: 500;

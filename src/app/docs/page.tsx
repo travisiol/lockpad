@@ -24,6 +24,7 @@ export default function DocsPage() {
               ["#vesting", "Developer vesting"],
               ["#feelock", "Fee lock"],
               ["#burial", "Burials"],
+              ["#trading", "Trading"],
               ["#numbers", "The numbers"],
               ["#take", "What the pad takes"],
               ["#contracts", "Contracts"],
@@ -126,6 +127,21 @@ export default function DocsPage() {
             <p>
               A burial is itself a trade, so 1% of it comes back as a creator fee — into the same lock, to be buried an hour
               later. The series converges; the token page shows the running total.
+            </p>
+          </Section>
+
+          <Section id="trading" title="Trading">
+            <p>
+              Every token page has a buy/sell panel. It is a direct call to the token&apos;s Pons curve — the pad is not in
+              the path and takes nothing from a trade. Quotes are computed from the curve&apos;s reserves (an exact constant
+              product with 1.68 ETH of phantom liquidity, fee off the input on a buy and off the output on a sell), and the
+              minimum you accept is that quote less your slippage setting. Selling needs a one-time token approval first.
+            </p>
+            <p>
+              Pons charges {site.tradeFeePct} per trade, 70% of which is the creator fee — the part that lands in this
+              token&apos;s fee lock. Buys in the first minutes after launch also pay Pons&apos; snipe tax unless the buyer is
+              exempt; the panel shows the current rate for your address. After graduation the market moves to a pool and the
+              panel points to Pons.
             </p>
           </Section>
 
